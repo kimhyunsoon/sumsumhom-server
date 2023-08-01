@@ -3,7 +3,7 @@
 # micro
 Docker Stack with Nginx as a Reverse Proxy Server and TypeScript Node for Socket.IO and RESTful API.
 
-**This repository includes only TypeScript Node.:**[micro-node is here.](https://github.com/kimhyunsoon/micro-builder)  
+**This repository includes only TypeScript Node.:**[micro-builder is here.](https://github.com/kimhyunsoon/micro-builder)  
 
 # Directory Structure
 ```

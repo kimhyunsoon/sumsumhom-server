@@ -64,7 +64,6 @@ router.put('/', (request, response) => {
   })();
 });
 
-
 // delete
 router.put('/delete', (request, response) => {
   void (async (): Promise<void> => {

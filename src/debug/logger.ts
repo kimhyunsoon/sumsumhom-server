@@ -3,7 +3,7 @@ import { logs } from '../config/config.json';
 import dayjs from 'dayjs';
 import fs from 'fs';
 
-const path = logs.path;
+const path: string = logs.path;
 
 const logger = pino({
   transport: {
@@ -21,11 +21,13 @@ function writeLogToFile(log: unknown): void {
 
   const currentPath = `${path}/${dayjs().format('YYYYMMDD')}.log`;
   const fileExists = fs.existsSync(currentPath);
+  const folderExists = fs.existsSync(path);
 
-  if (!fileExists) {
-    fs.writeFileSync(currentPath, newLine);
+  if (!folderExists) {
+    fs.mkdirSync(path);
   } else {
-    fs.appendFileSync(currentPath, newLine);
+    if (!fileExists) fs.writeFileSync(currentPath, newLine);
+    else fs.appendFileSync(currentPath, newLine);
   }
 }
 export default {

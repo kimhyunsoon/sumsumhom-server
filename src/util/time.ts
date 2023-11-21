@@ -1,6 +1,5 @@
-import dayjs, { type UnitTypeShort } from 'dayjs';
+import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
-import config from '../config/config.json';
 
 dayjs.extend(utc);
 

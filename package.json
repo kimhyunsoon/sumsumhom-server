@@ -47,7 +47,7 @@
     "sha3": "^2.1.4",
     "socket.io": "^4.6.1",
     "socket.io-client": "^4.5.3",
-    "typescript": "*",
+    "typescript": "5.2.0",
     "useragent": "^2.3.0"
   }
 }

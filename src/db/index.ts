@@ -13,7 +13,7 @@ interface DBConfig {
 
 function makeMongodbURL({ host, port, user, password, database }: DBConfig): string {
   const auth: string = user != null && password != null ? `${user}:${password}@` : '';
-  return `mongodb://${auth}${host}:${port}/${database}?authMechanism=DEFAULT&authSource=${database}`;
+  return `mongodb://${auth}${host}:${port}/${database}?authMechanism=DEFAULT&authSource=admin`;
 }
 
 export class Database {

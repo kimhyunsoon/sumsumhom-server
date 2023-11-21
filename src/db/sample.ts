@@ -3,7 +3,6 @@ import { Schema, model, type Model, Types } from 'mongoose';
 import { Error } from '../debug/error';
 import db from '.';
 import { payloadToListQuery, payloadToSummaryQuery } from './helper';
-import { uploads } from '../util/file';
 
 interface SampleInterface {
   name: string

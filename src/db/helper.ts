@@ -42,7 +42,7 @@ function transFilterToCondition(filter: Filter): Record<string, any> {
     value == null &&
     filter.filters == null
   ) {
-    throw Error.badRequestArgument('filters-condition');
+    Error.badRequestArgument('filters-condition');
   }
   switch (condition) {
     case 'some':
@@ -54,7 +54,7 @@ function transFilterToCondition(filter: Filter): Record<string, any> {
         [key]: null,
       };
     case 'eq':
-      if (key === '_id') {
+      if (key === '_id' || /_id$/.test(key)) {
         return {
           [key]: { [`$${String(condition)}`]: new Types.ObjectId(String(value)) },
         };
@@ -73,20 +73,21 @@ function transFilterToCondition(filter: Filter): Record<string, any> {
       };
     case 'in':
       if (!Array.isArray(value) || value.length <= 1) {
-        throw Error.badRequestArgument('filters-condition-in');
+        Error.badRequestArgument('filters-condition-in');
       }
       return {
         [key]: { $in: value },
       };
     case 'inc':
       return {
-        [key]: { $regex: value, $options: 'i' },
+        [key]: { $regex: String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' },
       };
     case undefined:
       if (filter.filters == null) throw Error.badRequestArgument('filters-condition');
       return {};
     default:
-      throw Error.badRequestArgument('filters-condition');
+      Error.badRequestArgument('filters-condition');
+      return {};
   }
 }
 
@@ -102,7 +103,7 @@ function transFiltersToQuery(filters: Filter[]): Record<string, any> | null {
       const transformedFilter = transFilterToCondition(filter);
       if (Object.keys(transformedFilter).length > 0) query[where].push(transformedFilter);
     } else {
-      throw Error.badRequestArgument('filters-where');
+      Error.badRequestArgument('filters-where');
     }
     if (filter.filters != null) {
       const subQuery = transFiltersToQuery(filter.filters);
@@ -150,16 +151,18 @@ function transSortToQuery({ sortBy, sortDesc }: Sort): SortQuery | null {
   });
 }
 
-function payloadToListQuery(preset: PipelineStage[], payload: Record<string, any>): PipelineStage[] {
+function payloadToListQuery(preset: PipelineStage[], payload: Record<string, any>, disableFlag?: boolean): PipelineStage[] {
   const { sortBy, sortDesc, itemsPerPage, page } = payload;
 
   const qurey = [
     ...preset,
   ];
 
-  let match: Record<string, any> = {
-    disable: false,
-  };
+  let match: Record<string, any> = disableFlag === false
+    ? {}
+    : {
+      disable: false,
+    };
 
   let sort: null | SortQuery = null;
   const pagenation = transPagenationToQuery({ page, itemsPerPage });
@@ -187,13 +190,17 @@ function payloadToListQuery(preset: PipelineStage[], payload: Record<string, any
 
   return qurey;
 }
-function payloadToSummaryQuery(preset: PipelineStage[], payload: Record<string, any>): PipelineStage[] {
+function payloadToSummaryQuery(preset: PipelineStage[], payload: Record<string, any>, disableFlag?: boolean): PipelineStage[] {
   const qurey = [
     ...preset,
   ];
-  let match: Record<string, any> = {
-    disable: false,
-  };
+
+  let match: Record<string, any> = disableFlag === false
+    ? {}
+    : {
+      disable: false,
+    };
+
   if (payload.filters != null && Array.isArray(payload.filters)) {
     const matchQurey = transFiltersToQuery(payload.filters);
     if (matchQurey !== null) {

@@ -1,4 +1,5 @@
-FROM arm64v8/node:18.16.0
+# FROM arm64v8/node:18.16.0
+FROM node:18.16.0
 
 RUN apt-get update
 

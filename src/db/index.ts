@@ -1,150 +1,92 @@
-import mongoose, { type Model, type ClientSession, type Mongoose } from 'mongoose';
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import mariadb from 'mariadb';
+import { type DBArgs } from './typedef';
 import { Error } from '../debug/error';
-import { type UpdateResult } from 'mongodb';
+import { Transaction } from './transaction';
 
-interface DBConfig {
-  host: string
-  port: number
-  user?: string
-  password?: string
-  database: string
-  options?: Record<string, unknown>
-}
-
-function makeMongodbURL({ host, port, user, password, database }: DBConfig): string {
-  const auth: string = user != null && password != null ? `${user}:${password}@` : '';
-  return `mongodb://${auth}${host}:${port}/${database}?authMechanism=DEFAULT&authSource=admin&directConnection=true`;
+export interface DBConfig extends mariadb.PoolConfig {
 }
 
 export class Database {
   static instance: Database | undefined;
 
   static async initialize(config: DBConfig): Promise<void> {
-    Database.instance = new Database();
-    await Database.instance.checkConnection(config);
+    Database.instance = new Database({
+      ...config,
+      insertIdAsNumber: true,
+      bigIntAsNumber: true,
+    });
+    await Database.instance.checkConnection();
   }
 
-  readonly mongoose: Mongoose;
+  private readonly pool: mariadb.Pool;
 
-  constructor() {
-    this.mongoose = mongoose;
+  constructor(config: DBConfig) {
+    this.pool = mariadb.createPool(config);
   }
 
-  private async checkConnection(config: DBConfig): Promise<void> {
-    const options = config.options != null ? config.options : {};
+  public async checkConnection(): Promise<void> {
+    let conn: mariadb.PoolConnection | undefined;
+
     try {
-      await this.mongoose.connect(makeMongodbURL(config), options);
+      conn = await this.pool?.getConnection();
     } catch (error) {
-      Error.makeThrow(error, 'checkConnection');
-    }
-  }
-
-  public async transaction(callback: (session: ClientSession) => Promise<void>): Promise<void> {
-    let session: null | ClientSession = null;
-    try {
-      session = await mongoose.startSession();
-      session.startTransaction();
-
-      await callback(session); // 콜백함수 실행
-
-      await session.commitTransaction();
-    } catch (error: unknown) {
-      await session?.abortTransaction();
-      await session?.endSession();
-      Error.makeThrow(error, 'transaction');
+      Error.makeThrow(error);
     } finally {
-      await session?.endSession();
+      await conn?.release();
     }
   }
 
-  public async create(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    collection: Model<any>,
-    payload: Array<Record<string, unknown>>,
-    session: ClientSession | null = null, // transaction은 optional
-  ): Promise<string[]> {
-    if (session === null) { // transaction이 아닌 경우 벌크로 실행
-      const inserts = await collection.create(payload);
-      const result = inserts.map((insert: Record<string, string>) => insert._id);
-      if (result.length <= 0) throw Error.notFoundData(`create-${collection.name}`);
-      return result;
+  public async query(
+    form: {
+      sql: string
+      batch?: boolean
+      args: DBArgs | DBArgs[] | Array<string | number>
+      done?: (result: any[]) => any
+    },
+  ): Promise<string | undefined> {
+    let conn;
+    try {
+      conn = await this.pool?.getConnection();
+
+      let namedPlaceholders;
+
+      if ((form.batch ?? false) && form.args instanceof Array) {
+        namedPlaceholders = !(form.args[0] instanceof Array);
+      } else {
+        namedPlaceholders = !(form.args instanceof Array);
+      }
+
+      let result;
+
+      if (form.batch != null && form.batch) {
+        result = await conn?.batch({ sql: form.sql, namedPlaceholders }, form.args);
+      } else {
+        result = await conn?.query({ sql: form.sql, namedPlaceholders }, form.args);
+      }
+
+      return (form.done != null) ? form.done(result) : result;
+    } catch (error) {
+      Error.makeThrow(error);
+    } finally {
+      await conn?.release();
     }
-    const result: string[] = [];
-    for (const row of payload) {
-      const [insert] = await collection.create([row], { session });
-      result.push(insert._id);
-    }
-    if (result.length <= 0) throw Error.notFoundData(`create-${collection.name}`);
-    return result;
   }
 
-  public async update(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    collection: Model<any>,
-    payload: Record<string, unknown>,
-    session: ClientSession | null = null, // transaction은 optional
-  ): Promise<UpdateResult<mongoose.mongo.BSON.Document>> {
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    const { _ids, ...data } = payload;
-    if (session === null) { // transaction이 아닌 경우
-      const result = await collection
-        .updateMany({
-          _id: { $in: _ids },
-        }, {
-          $set: {
-            ...data,
-            updated: new Date(),
-          },
-        });
-      return result;
-    }
-    const result = await collection
-      .updateMany({
-        _id: { $in: _ids },
-      }, {
-        $set: {
-          ...data,
-          updated: new Date(),
-        },
-      }, { session });
-    return result;
-  }
+  public async beginTransaction(): Promise<Transaction> {
+    let transaction = null;
 
-  public async updateOne(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    collection: Model<any>,
-    payload: Record<string, unknown>,
-    session: ClientSession | null = null, // transaction은 optional
-  ): Promise<UpdateResult<mongoose.mongo.BSON.Document>> {
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    const { _id, ...data } = payload;
-    if (session === null) { // transaction이 아닌 경우
-      const result = await collection
-        .updateOne({
-          _id,
-        }, {
-          $set: {
-            ...data,
-            updated: new Date(),
-          },
-        });
-      return result;
+    if (this.pool != null) {
+      transaction = new Transaction(this.pool);
+      await transaction.begin();
     }
-    const result = await collection
-      .updateOne({
-        _id,
-      }, {
-        $set: {
-          ...data,
-          updated: new Date(),
-        },
-      }, { session });
-    return result;
+
+    return transaction as Transaction;
   }
 }
 
 export default {
   initialize: Database.initialize,
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   getInstance: () => (Database.instance!),
 };

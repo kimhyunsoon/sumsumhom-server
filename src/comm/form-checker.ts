@@ -169,19 +169,6 @@ export const summaryRulePreset: IForm = {
   filters: { type: 'array', required: false },
 };
 
-export const getRulePreset: IForm = {
-  _id: { type: 'string', minLen: 24, maxLen: 24 },
-};
-
-export const updateRulePreset: IForm = {
-  _ids: {
-    type: 'array',
-    children: {
-      _id: { type: 'string' },
-    },
-  },
-};
-
 export function middleware(forms: IFormList): (socket: Socket, next: (err?: Error) => void) => void {
   return (socket, next): void => {
     doCheckForm(socket, forms);

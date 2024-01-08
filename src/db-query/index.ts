@@ -1,5 +1,7 @@
-import sample from './sample';
+import settings from './settings';
+import users from './users';
 
 export default {
-  sample,
+  settings,
+  users,
 };

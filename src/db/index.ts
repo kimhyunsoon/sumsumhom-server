@@ -16,6 +16,7 @@ export class Database {
       ...config,
       insertIdAsNumber: true,
       bigIntAsNumber: true,
+      timezone: 'Asia/Seoul',
     });
     await Database.instance.checkConnection();
   }
@@ -45,7 +46,7 @@ export class Database {
       args: DBArgs | DBArgs[] | Array<string | number>
       done?: (result: any[]) => any
     },
-  ): Promise<string | undefined> {
+  ): Promise<any> {
     let conn;
     try {
       conn = await this.pool?.getConnection();

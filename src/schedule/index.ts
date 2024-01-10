@@ -1,7 +1,7 @@
-import sample from './sample';
+import light from './light';
 
 export default {
   initialize() {
-    sample();
+    light();
   },
 };

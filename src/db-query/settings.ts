@@ -8,13 +8,15 @@ const settingsFields = {
   lightStatusTimes: 'settings.lightStatusTimes',
   lightOnMaxDuration: 'settings.lightOnMaxDuration',
   lightStatusRecentDate: 'settings.lightStatusRecentDate',
+  temperature: 'settings.temperature',
+  humidity: 'settings.humidity',
 };
 
 export default {
   getLight: (args: DBArgs) => ({
     sql:
       'SELECT\n' +
-      '  lightStatus, lightStatusTimes, lightOnMaxDuration, lightStatusRecentDate\n' +
+      '  lightStatus, lightStatusTimes, lightOnMaxDuration, lightStatusRecentDate, temperature, humidity\n' +
       'FROM settings\n' +
       'WHERE no=0',
     args,
@@ -33,6 +35,8 @@ export default {
           'lightStatusTimes',
           'lightOnMaxDuration',
           'lightStatusRecentDate',
+          'temperature',
+          'humidity',
         ],
         settingsFields,
       );

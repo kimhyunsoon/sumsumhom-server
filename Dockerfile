@@ -1,8 +1,9 @@
-# FROM arm64v8/node:18.16.0
-FROM node:18.16.0
+FROM arm64v8/node:18.16.0
+# FROM node:18.16.0
 
 RUN apt-get update
 
+RUN npm install pnpm -g
 RUN npm install pm2 -g
 
 RUN pm2 install typescript
@@ -19,7 +20,7 @@ RUN mkdir -p /volume
 RUN ln -s /volume/config /app/src/config
 RUN ln -s /volume/uploads /app/uploads
 
-RUN yarn install
+RUN pnpm install
 
 ENTRYPOINT ["/bin/sh", "run.sh"]
 
